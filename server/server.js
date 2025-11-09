@@ -8,16 +8,14 @@ import jobRoutes from "./routers/jobRoutes.js";
 import companyRoutes from "./routers/companyRoutes.js";
 import studentRoutes from "./routers/studentRoutes.js";
 import adminRoutes from "./routers/adminRoutes.js";
-
-if (process.env.NODE_ENV !== "production"){
-  await import('dotenv/config');
-}
+import 'dotenv/config';
 
 const app = express();
 
 app.use(express.json());
 app.use(requestLogger);
-app.use(cors('*'));
+
+app.use(cors());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/jobs", jobRoutes);

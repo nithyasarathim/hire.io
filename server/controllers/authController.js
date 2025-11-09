@@ -3,7 +3,7 @@ import APIError from '../utilities/APIError.js';
 
 const register = async (req, res, next) => {
   try {
-    const { role, ...userData } = req.body; 
+    const { role, ...userData } = req.body;
     if (!role || !['student', 'company', 'admin'].includes(role.toLowerCase())) {
         return next(new APIError(400, 'Role is required and must be student, company, or admin'));
     }

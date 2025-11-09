@@ -1,15 +1,15 @@
 import mongoose from "mongoose";
 
 const studentSchema = new mongoose.Schema({
-  student_id: {
+  id: {
     type: String,
     default: () => new mongoose.Types.ObjectId().toString(),
   },
-  student_name: {
+  name: {
     type: String,
     required: true,
   },
-  student_email: {
+  email: {
     type: String,
     required: true,
     unique: true,
@@ -23,7 +23,7 @@ const studentSchema = new mongoose.Schema({
     enum: ["active", "notactive"],
     default: "active",
   },
-  student_description: {
+  description: {
     type: String,
   },
   resume: {

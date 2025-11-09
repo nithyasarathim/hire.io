@@ -16,6 +16,7 @@ const getModelByRole = (role) => {
 };
 
 export const authenticate = async (req, res, next) => {
+  if (req.method === 'OPTIONS') return next(); 
   let token;
 
   if (req.headers.authorization?.startsWith('Bearer')) {
