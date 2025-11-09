@@ -9,7 +9,7 @@ const SignIn = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ 
     role: 'company', 
-    company_name: '', 
+    name: '', 
     email: '', 
     password: '' 
   });
@@ -38,7 +38,7 @@ const SignIn = () => {
       const response = await registerUser({
         role: 'student',
         student_name: googleName,
-        email: googleEmail,
+        student_email: googleEmail,
         password: 'SSO_DEFAULT_PASSWORD',
       });
       
@@ -68,7 +68,7 @@ const SignIn = () => {
         <h3>Company Sign In</h3>
         <form onSubmit={handleCompanySubmit}>
           <input type="text" name="company_name" placeholder="Company Name" onChange={handleInputChange} required />
-          <input type="email" name="email" placeholder="Email" onChange={handleInputChange} required />
+          <input type="email" name="company_email" placeholder="Email" onChange={handleInputChange} required />
           <input type="password" name="password" placeholder="Password" onChange={handleInputChange} required />
           <button type="submit">Register Company</button>
         </form>
