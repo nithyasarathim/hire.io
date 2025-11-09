@@ -8,5 +8,4 @@ const generateToken = (id, role) => {
     expiresIn: '14d',
   });
 };
-
 export default generateToken;
