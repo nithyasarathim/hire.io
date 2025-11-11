@@ -16,6 +16,14 @@ const getModelByRole = (role) => {
 
 const registerUser = async (role, userData) => {
   const Model = getModelByRole(role);
+
+  if (role === 'company') {
+    const student = await Student.findOne({ email: userData.email });
+    if (student) {
+        throw new APIError(400, 'This email is already registered as a Student (SSO user). Please use a different email.');
+    }
+  }
+  
   const salt = await bcrypt.genSalt(10);
   userData.password = await bcrypt.hash(userData.password, salt);
   try {
@@ -34,9 +42,31 @@ const registerUser = async (role, userData) => {
   }
 };
 
+const registerLoginStudentSSO = async (userData) => {
+    const { name, email } = userData;
+    let student = await Student.findOne({ email });
+
+    if (!student) {
+        student = await Student.create({ student_name: name, email });
+    }
+
+    const userPayload = student.toObject();
+    return {
+        user: userPayload,
+        token: generateToken(student._id, 'student'),
+    };
+};
+
+
 const loginUser = async (role, email, password) => {
   const Model = getModelByRole(role);
-  const user = await Model.findOne({ email });
+  
+  if (role === 'student') {
+      throw new APIError(400, 'Student login must be done via SSO endpoint.');
+  }
+
+  const user = await Model.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
+  
   if (user && (await bcrypt.compare(password, user.password))) {
     const userPayload = user.toObject();
     delete userPayload.password;
@@ -49,4 +79,4 @@ const loginUser = async (role, email, password) => {
   }
 };
 
-export default { registerUser, loginUser }; 
+export default { registerUser, loginUser, registerLoginStudentSSO };

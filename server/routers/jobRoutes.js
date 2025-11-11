@@ -12,5 +12,8 @@ router.route('/:id')
   .get(jobController.getJobById)
   .put(authenticate, authorize(['company', 'admin']), jobController.updateJob)
   .delete(authenticate, authorize(['admin']), jobController.deleteJob);
+  
+router.route('/:id/match/candidates')
+  .get(authenticate, authorize(['company', 'admin']), jobController.matchCandidates);
 
 export default router;

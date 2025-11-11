@@ -1,176 +1,227 @@
 # hire.io Backend API Documentation
 
-This document details the RESTful API for the **hire.io** Job Placement Platform. All endpoints use JSON for request and response bodies and require **JWT-based authentication** for protected routes.
-
----
-
-## Base URL
-```
-http://localhost:{specified-port}
-```
+> **Platform**: Job Placement Platform  
+> **Base URL**: `http://localhost:{PORT}/api`  
+> **Authentication**: JWT (Bearer Token) for protected routes  
+> **External Integration**: [Neuron Matcher API]({{NEURON_SERVER_API}})  
+> **Server Roles**: `student`, `company`, `admin`  
+> **Current Time**: November 10, 2025 08:33 PM IST  
+> **Country**: India
 
 ---
 
 ## Authentication Endpoints (`/api/auth`)
 
-Handles user registration, login, and profile access for **Students**, **Companies**, and **Admins**.
+Handles user login, registration, and SSO for students.
 
-| Method | Endpoint               | Description                                              | Access             |
-|--------|------------------------|----------------------------------------------------------|--------------------|
-| POST   | `/api/auth/register`   | Register a new user (role: `student`, `company`, `admin`) | Public             |
-| POST   | `/api/auth/login`      | Login and receive JWT token (role required in body)       | Public             |
-| GET    | `/api/auth/profile`    | Get authenticated user’s profile                          | Authenticated      |
+| Method | Endpoint | Description | Access |
+|--------|---------|-------------|--------|
+| `POST` | `/register` | Register a new **Company** or **Admin** account | Public |
+| `POST` | `/login` | Login for **Company** or **Admin** | Public |
+| `POST` | `/sso/student` | SSO login/register for **Students** (name + email only) | Public |
+| `GET`  | `/profile` | Get authenticated user’s profile & role | Authenticated |
 
-### Register Example
+### SSO Student Login Example
+
 ```json
-POST /api/auth/register
+POST /api/auth/sso/student
+Content-Type: application/json
+
 {
-  "role": "student",
-  "student_name": "Alex Johnson",
-  "email": "alex@college.edu",
-  "password": "securePass123"
+  "name": "Jane Doe",
+  "email": "jane@sso.edu"
 }
 ```
 
-**Response:**
-```json
-{
-  "user": { ... },
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
-### Login Example
-```json
-POST /api/auth/login
-{
-  "role": "company",
-  "email": "hr@techcorp.com",
-  "password": "companyPass!"
-}
-```
-
----
-
-## Job Endpoints (`/api/jobs`)
-
-Manage job postings — viewable by all, creatable/editable by **Companies** and **Admins**.
-
-| Method | Endpoint           | Description                                                  | Access             |
-|--------|--------------------|--------------------------------------------------------------|--------------------|
-| GET    | `/api/jobs`        | List all open job postings                                   | Public             |
-| POST   | `/api/jobs`        | Create a new job (company_id must match authenticated user)  | Company            |
-| GET    | `/api/jobs/:id`    | Get job by ID with company & candidate details               | Public             |
-| PUT    | `/api/jobs/:id`    | Update job (owner company or admin only)                     | Company, Admin     |
-| DELETE | `/api/jobs/:id`    | Delete job                                                   | Admin              |
-
-### Create Job Example
-```json
-POST /api/jobs
-Authorization: Bearer <JWT>
-{
-  "company_id": "60c72b2f9b1d8e0015f620f4",
-  "job_name": "Software Engineering Intern",
-  "job_description": "Build scalable backend services with Node.js and TypeScript.",
-  "opening_status": "open"
-}
-```
-
----
-
-## Company Endpoints (`/api/companies`)
-
-Manage company profiles and listings.
-
-| Method | Endpoint                | Description                                              | Access             |
-|--------|-------------------------|----------------------------------------------------------|--------------------|
-| GET    | `/api/companies`        | List all companies                                       | Admin              |
-| POST   | `/api/companies`        | Create company profile (admin or via register)           | Admin              |
-| GET    | `/api/companies/:id`    | Get company with job listings                            | Public             |
-| PUT    | `/api/companies/:id`    | Update company profile                                   | Company, Admin     |
-| DELETE | `/api/companies/:id`    | Delete company and all associated jobs                   | Admin              |
+> **Note**: Students **cannot** use `/register` or `/login`.
 
 ---
 
 ## Student Endpoints (`/api/students`)
 
-Manage student profiles and visibility.
+Manage student profiles and AI-powered job matching.
 
-| Method | Endpoint                | Description                                              | Access                     |
-|--------|-------------------------|----------------------------------------------------------|----------------------------|
-| GET    | `/api/students`         | List all student profiles                                | Admin, Company             |
-| POST   | `/api/students`         | Create student profile (admin or via register)           | Admin                      |
-| GET    | `/api/students/:id`     | Get student profile                                      | Student (self), Admin, Company |
-| PUT    | `/api/students/:id`     | Update student profile                                   | Student (self), Admin      |
-| DELETE | `/api/students/:id`     | Delete student profile                                   | Admin                      |
+| Method | Endpoint | Description | Access |
+|--------|---------|-------------|--------|
+| `GET`  | `/` | List all student profiles | Admin, Company |
+| `POST` | `/` | Create a new student profile | Admin |
+| `GET`  | `/:id` | Get student by ID | Student (self), Admin, Company |
+| `PATCH`| `/:id` | Update student profile | Student (self), Admin |
+| `DELETE`| `/:id` | Delete student profile | Admin |
+| `PUT`  | `/:id/resume` | **Upload PDF resume** → forwards to Neuron API | Student (self), Admin |
+| `GET`  | `/:id/match/jobs?count=N` | **Get job recommendations** from Neuron API | Student (self), Admin |
 
-### Update Student Profile
+### Resume Upload (Multipart Form)
+
+```http
+PUT /api/students/123/resume
+Content-Type: multipart/form-data
+Authorization: Bearer <jwt>
+
+form-data:
+  resume: <pdf-file>
+```
+
+> Forwards: `user_id`, `username`, and `resume` to  
+> `{{NEURON_SERVER_API}}/upload/resume`  
+> Stores returned `resumeId` locally.
+
+### Job Matching
+
+```http
+GET /api/students/123/match/jobs?count=5
+```
+
+- Queries `{{NEURON_SERVER_API}}/match/jobs?resumeId=...`
+- Filters only **open jobs** from local DB
+- Returns `400` if `resumeId` is missing
+
+---
+
+## Company Endpoints (`/api/companies`)
+
+Manage company profiles. Email must be unique across **students** and **companies**.
+
+| Method | Endpoint | Description | Access |
+|--------|---------|-------------|--------|
+| `GET`  | `/` | List all companies | Admin |
+| `POST` | `/` | Create company profile | Admin |
+| `GET`  | `/:id` | Get company + its jobs | Public |
+| `PUT`  | `/:id` | Update company | Company (self), Admin |
+| `DELETE`| `/:id` | Delete company | Admin |
+
+> **Blocked**: Cannot register if email already used by a student (SSO).
+
+---
+
+## Job Endpoints (`/api/jobs`)
+
+Manage job postings and candidate matching via Neuron API.
+
+| Method | Endpoint | Description | Access |
+|--------|---------|-------------|--------|
+| `GET`  | `/` | List all **open** job postings | Public |
+| `POST` | `/` | Create job → forwards to Neuron API | Company |
+| `GET`  | `/:id` | Get job + company & candidate details | Public |
+| `PUT`  | `/:id` | Update job | Company (owner), Admin |
+| `DELETE`| `/:id` | Delete job | Admin |
+| `GET`  | `/:id/match/candidates` | **Get candidate recommendations** | Company (owner), Admin |
+
+### Job Creation Example
+
 ```json
-PUT /api/students/60d5ec49f1b2c8a7e4a1b2c3
+POST /api/jobs
+Content-Type: application/json
+Authorization: Bearer <jwt>
+
 {
-  "student_description": "Top-tier CS graduate specializing in AI/ML.",
-  "skills": ["Python", "TensorFlow", "React", "Node.js"],
-  "current_status": "actively_applying"
+  "company": "60c72b2f9b1d8e0015f620f4",
+  "job_name": "Software Engineering Intern",
+  "job_description": "Build scalable backend services with Node.js and TypeScript."
 }
 ```
+
+> - `company` = Local company ID (must match authenticated user)
+> - Forwards `company name`, `job_title`, `description` → `{{NEURON_SERVER_API}}/upload/jobs`
+> - Stores returned `job_id` locally
+
+### Candidate Matching
+
+```http
+GET /api/jobs/abc123/match/candidates?count=5
+```
+
+- Queries `{{NEURON_SERVER_API}}/match/candidates?jobid=...`
+- Only works if:
+  - Job is **open**
+  - No candidate already assigned
+- Fails with `403` if unauthorized
 
 ---
 
 ## Admin Endpoints (`/api/admins`)
 
-Admin account management (restricted operations).
+Admin account management and system analytics.
 
-| Method | Endpoint              | Description                                      | Access         |
-|--------|-----------------------|--------------------------------------------------|----------------|
-| GET    | `/api/admins`         | List all admin accounts                          | Admin          |
-| POST   | `/api/admins`         | Create new admin (initial setup or superadmin)   | Public (setup) |
-| GET    | `/api/admins/:id`     | Get admin profile                                | Admin          |
-| PUT    | `/api/admins/:id`     | Update admin details                             | Admin          |
-| DELETE | `/api/admins/:id`     | Delete admin account                             | Admin          |
+| Method | Endpoint | Description | Access |
+|--------|---------|-------------|--------|
+| `GET`  | `/` | List all admins | Admin |
+| `POST` | `/` | Create admin (initial setup) | Public (Setup only) |
+| `GET`  | `/:id` | Get admin profile | Admin |
+| `PUT`  | `/:id` | Update admin | Admin |
+| `DELETE`| `/:id` | Delete admin | Admin |
+| `GET`  | `/analytics` | **Full system analytics** | Admin |
 
----
-
-## HTTP Status Codes & Errors
-
-hire.io uses standard HTTP codes with consistent JSON error formatting.
-
-| Code | Meaning                     | Example Response |
-|------|-----------------------------|------------------|
-| `200` | OK                          | `{ "data": ... }` |
-| `201` | Created                     | `{ "job": { ... } }` |
-| `204` | No Content (DELETE success) | *(empty)* |
-| `400` | Bad Request                 | `{ "success": false, "message": "Email is required" }` |
-| `401` | Unauthorized                | `{ "success": false, "message": "Invalid token" }` |
-| `403` | Forbidden                   | `{ "success": false, "message": "Role 'student' not authorized" }` |
-| `404` | Not Found                   | `{ "success": false, "message": "Job not found" }` |
-| `500` | Server Error                | `{ "success": false, "message": "Internal server error" }` |
+### Analytics Response Includes:
+- Total counts: students, companies, jobs, admins
+- Full data dumps (optional filtering)
 
 ---
 
-## Quick Start Guide
+## HTTP Status Codes & Error Handling
 
-### 1. Login as Admin
-```bash
-curl -X POST {base-url}/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "admin@hire.io",
-    "password": "adminSecret2025",
-    "role": "admin"
-  }'
+All errors return consistent JSON via `APIError` utility.
+
+| Code | Meaning | Example Response |
+|------|--------|------------------|
+| `200` | OK | `{ "data": { ... } }` |
+| `201` | Created | `{ "job": { ... } }` |
+| `204` | No Content | *(empty body)* |
+| `400` | Bad Request | `{ "success": false, "message": "Email is required" }` |
+| `401` | Unauthorized | `{ "success": false, "message": "Invalid token" }` |
+| `403` | Forbidden | `{ "success": false, "message": "Role 'student' not authorized" }` |
+| `404` | Not Found | `{ "success": false, "message": "Job not found" }` |
+| `500` | Server Error | `{ "success": false, "message": "Neuron API unreachable" }` |
+
+---
+
+## Neuron Matcher API Integration
+
+| hire.io Endpoint | → | Neuron API |
+|------------------|---|------------|
+| `PUT /students/:id/resume` | → | `POST {{NEURON_SERVER_API}}/upload/resume` |
+| `POST /jobs` | → | `POST {{NEURON_SERVER_API}}/upload/jobs` |
+| `GET /students/:id/match/jobs` | → | `GET {{NEURON_SERVER_API}}/match/jobs` |
+| `GET /jobs/:id/match/candidates` | → | `GET {{NEURON_SERVER_API}}/match/candidates` |
+
+> **Semantic Matching Powered by**: Sentence Transformers + Cosine Similarity  
+> **No RAG** — Pure **Vector-Based Semantic Matching**
+
+---
+
+## Summary of Roles & Permissions
+
+| Action | Student | Company | Admin |
+|-------|--------|--------|-------|
+| Register/Login (Traditional) | No | Yes | Yes |
+| SSO Login | Yes | No | No |
+| View Own Profile | Yes | Yes | Yes |
+| Update Own Profile | Yes | Yes | Yes |
+| Upload Resume | Yes | No | Yes |
+| Get Job Matches | Yes | No | Yes |
+| Post Job | No | Yes | Yes |
+| Get Candidate Matches | No | Yes | Yes |
+| Manage Users | No | No | Yes |
+| View Analytics | No | No | Yes |
+
+---
+
+## API Base URL Configuration
+
+```env
+PORT=8000
+NEURON_SERVER_API=http://localhost:8001
+JWT_SECRET=your-secret-key
 ```
 
-→ Save the `token` from response.
+---
 
-### 2. Access Protected Route
-```bash
-curl {base-url}/api/companies \
-  -H "Authorization: Bearer <your_jwt_token>"
-```
-
-> Only works if token belongs to an **Admin**.
+**hire.io — Intelligent, Semantic, Scalable Job Matching**  
+*Powered by AI, Built for India*
 
 ---
 
-**hire.io** — Connecting Talent with Opportunity.  
-*Built for scale. Secured by design.*
+> **Documentation Version**: 1.0  
+> **Last Updated**: November 10, 2025  
+> **Maintained by**: hire.io Backend Team
+

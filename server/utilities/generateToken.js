@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import "dotenv/config";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -7,5 +8,4 @@ const generateToken = (id, role) => {
     expiresIn: '14d',
   });
 };
-
 export default generateToken;

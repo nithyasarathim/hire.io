@@ -5,7 +5,6 @@ const requestLogger = (req, res, next) => {
         method: req.method,
         path: req.path,
         ip: req.ip,
-        body: Object.keys(req.body).length ? 'present' : 'empty' 
     });
     next();
 };
