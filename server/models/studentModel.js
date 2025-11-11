@@ -1,22 +1,14 @@
 import mongoose from "mongoose";
 
 const studentSchema = new mongoose.Schema({
-  student_id: {
-    type: String,
-    default: () => new mongoose.Types.ObjectId().toString(),
-  },
   student_name: {
     type: String,
     required: true,
   },
-  student_email: {
+  email: {
     type: String,
     required: true,
     unique: true,
-  },
-  password: {
-    type: String,
-    required: true,
   },
   current_status: {
     type: String,
@@ -26,8 +18,9 @@ const studentSchema = new mongoose.Schema({
   student_description: {
     type: String,
   },
-  resume: {
+  resumeId: {
     type: String,
+    default: null,
   },
   skills: {
     type: [String],

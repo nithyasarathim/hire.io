@@ -1,15 +1,11 @@
 import mongoose from "mongoose";
 
 const companySchema = new mongoose.Schema({
-  company_id: {
-    type: String,
-    default: () => new mongoose.Types.ObjectId().toString(),
-  },
   company_name: {
     type: String,
     required: true,
   },
-  company_email: {
+  email: {
     type: String,
     required: true,
     unique: true,
@@ -28,7 +24,8 @@ const companySchema = new mongoose.Schema({
     type: String,
   },
   jobs: {
-    type: [String],
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "Job",
     default: [],
   },
 });

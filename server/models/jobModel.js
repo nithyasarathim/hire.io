@@ -3,9 +3,10 @@ import mongoose from "mongoose";
 const jobSchema = new mongoose.Schema({
   job_id: {
     type: String,
-    default: () => new mongoose.Types.ObjectId().toString(),
+    required: true,
+    unique: true,
   },
-  company_id: {
+  company: {
     type: mongoose.Schema.Types.ObjectId,
     required: true,
     ref: "Company",

@@ -3,6 +3,7 @@ import Student from '../models/studentModel.js';
 import Company from '../models/companyModel.js';
 import Admin from '../models/adminModel.js';
 import APIError from '../utilities/APIError.js';
+import 'dotenv/config';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -17,6 +18,7 @@ const getModelByRole = (role) => {
 
 export const authenticate = async (req, res, next) => {
   let token;
+  console.log("aaa")
 
   if (req.headers.authorization?.startsWith('Bearer')) {
     try {

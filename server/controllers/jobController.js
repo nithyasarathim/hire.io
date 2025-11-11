@@ -4,10 +4,10 @@ import APIError from '../utilities/APIError.js';
 
 const createJob = async (req, res, next) => {
     try {
-        if (req.role !== 'company' || req.user.company_id.toString() !== req.body.company_id) {
+        if (req.role !== 'company' || req.user._id.toString() !== req.body.company) { 
             return next(new APIError(403, 'Unauthorized to create job for this company'));
         }
-        const job = await jobService.create(req.body);
+        const job = await jobService.createJob(req.user._id, req.body);
         res.status(201).json(job);
     } catch (error) {
         next(error);
@@ -22,7 +22,7 @@ const updateJob = async (req, res, next) => {
             return next(new APIError(404, 'Job not found'));
         }
         
-        if (req.role !== 'admin' && job.company_id.toString() !== req.user._id.toString()) {
+        if (req.role !== 'admin' && job.company.toString() !== req.user._id.toString()) {
             return next(new APIError(403, 'Not authorized to update this job'));
         }
         
@@ -42,10 +42,31 @@ const getJobs = async (req, res, next) => {
     }
 };
 
+const matchCandidates = async (req, res, next) => {
+    try {
+        const jobId = req.params.id;
+        
+        const job = await jobService.findById(jobId);
+        if (!job) {
+            return next(new APIError(404, 'Job not found'));
+        }
+        if (req.role !== 'admin' && job.company.toString() !== req.user._id.toString()) {
+            return next(new APIError(403, 'Not authorized to match candidates for this job'));
+        }
+
+        const matchedCandidates = await jobService.matchCandidates(jobId);
+
+        res.status(200).json(matchedCandidates);
+    } catch (error) {
+        next(error);
+    }
+};
+
 export default {
     getJobs,
     createJob,
-    getJobById: baseController.getOne(jobService, 'company_id candidate'),
+    getJobById: baseController.getOne(jobService, 'company candidate'),
     updateJob,
     deleteJob: baseController.deleteOne(jobService),
+    matchCandidates,
 };
