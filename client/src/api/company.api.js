@@ -40,3 +40,12 @@ export const getCompanyJobs = async (companyId) => {
     throw error.response?.data || new Error("Error fetching company jobs");
   }
 };
+
+export const fetchApplicantAnalytics = async (companyId) => {
+  try {
+    const response = await axiosInstance.get(`/api/companies/${companyId}/analytics/applicants-average`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || new Error("Error fetching applicant analytics");
+  }
+};

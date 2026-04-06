@@ -18,6 +18,23 @@ const jobSchema = new mongoose.Schema({
   job_description: {
     type: String,
   },
+  location: {
+    type: String,
+    required: true,
+  },
+  job_type: {
+    type: String,
+    enum: ["Internship", "Full-time", "Part-time"],
+    required: true,
+  },
+  salary_range: {
+    type: String,
+    default: "",
+  },
+  experience_level: {
+    type: String,
+    default: "",
+  },
   opening_status: {
     type: String,
     enum: ["open", "closed"],
@@ -28,6 +45,6 @@ const jobSchema = new mongoose.Schema({
     ref: "Student",
     default: null,
   },
-});
+}, { timestamps: true });
 
 export default mongoose.model("Job", jobSchema);

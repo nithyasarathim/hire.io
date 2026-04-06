@@ -14,20 +14,34 @@ const getModelByRole = (role) => {
   }
 };
 
+const normalizeUserData = (role, userData) => {
+  if (role === 'student') {
+    return {
+      ...userData,
+      student_name: userData.student_name || userData.name,
+      portfolio_url: userData.portfolio_url || '',
+    };
+  }
+
+  return userData;
+};
+
 const registerUser = async (role, userData) => {
   const Model = getModelByRole(role);
+  const normalizedUserData = normalizeUserData(role, userData);
 
-  if (role === 'company') {
-    const student = await Student.findOne({ email: userData.email });
-    if (student) {
-        throw new APIError(400, 'This email is already registered as a Student (SSO user). Please use a different email.');
-    }
+  if (!normalizedUserData.email || !normalizedUserData.password) {
+    throw new APIError(400, 'Email and password are required');
+  }
+
+  if (role === 'student' && !normalizedUserData.student_name) {
+    throw new APIError(400, 'Student name is required');
   }
   
   const salt = await bcrypt.genSalt(10);
-  userData.password = await bcrypt.hash(userData.password, salt);
+  normalizedUserData.password = await bcrypt.hash(normalizedUserData.password, salt);
   try {
-    const user = await Model.create(userData);
+    const user = await Model.create(normalizedUserData);
     const userPayload = user.toObject();
     delete userPayload.password;
     return {
@@ -42,28 +56,8 @@ const registerUser = async (role, userData) => {
   }
 };
 
-const registerLoginStudentSSO = async (userData) => {
-    const { name, email } = userData;
-    let student = await Student.findOne({ email });
-
-    if (!student) {
-        student = await Student.create({ student_name: name, email });
-    }
-
-    const userPayload = student.toObject();
-    return {
-        user: userPayload,
-        token: generateToken(student._id, 'student'),
-    };
-};
-
-
 const loginUser = async (role, email, password) => {
   const Model = getModelByRole(role);
-  
-  if (role === 'student') {
-      throw new APIError(400, 'Student login must be done via SSO endpoint.');
-  }
 
   const user = await Model.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
   
@@ -79,4 +73,4 @@ const loginUser = async (role, email, password) => {
   }
 };
 
-export default { registerUser, loginUser, registerLoginStudentSSO };
+export default { registerUser, loginUser };

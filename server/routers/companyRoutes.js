@@ -13,4 +13,6 @@ router.route('/:id')
   .put(authenticate, authorize(['company', 'admin']), companyController.updateCompany)
   .delete(authenticate, authorize(['admin']), companyController.deleteCompany);
 
+router.get('/:id/analytics/applicants-average', authenticate, authorize(['company', 'admin']), companyController.getApplicantAnalytics);
+
 export default router;

@@ -13,19 +13,14 @@ export const uploadStudentResume = (studentId, resumeFile) => {
   });
 };
 
-const NEURON_SERVER_API = import.meta.env.VITE_NEURON_SERVER_API;
-
-export const fetchJobsFromNeuron = async (resumeId, count) => {
-  if (!NEURON_SERVER_API) throw new Error('VITE_NEURON_SERVER_API not set');
-
-  const params = new URLSearchParams({ resumeId, count: count.toString() });
-  const response = await fetch(`${NEURON_SERVER_API}/match/jobs?${params.toString()}`);
-
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.message || `Neuron API error: ${response.status}`);
+export const fetchStudentMatches = async (studentId, count) => {
+  try {
+    const response = await axiosInstance.get(`/api/students/${studentId}/match/jobs`, {
+      params: { count },
+    });
+    return response.data.data;
+  } catch (error) {
+    throw error.response?.data || new Error('Error fetching job matches');
   }
-
-  return response.json();
 };
 

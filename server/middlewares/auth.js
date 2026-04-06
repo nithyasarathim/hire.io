@@ -18,7 +18,6 @@ const getModelByRole = (role) => {
 
 export const authenticate = async (req, res, next) => {
   let token;
-  console.log("aaa")
 
   if (req.headers.authorization?.startsWith('Bearer')) {
     try {
@@ -32,19 +31,20 @@ export const authenticate = async (req, res, next) => {
 
       req.user = user;
       req.role = decoded.role;
+      req.auth = { id: decoded.id, role: decoded.role };
       
-      next();
+      return next();
     } catch (error) {
       if (error instanceof APIError) return next(error);
       if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
         return next(new APIError(401, 'Not authorized, token invalid or expired'));
       }
-      next(new APIError(401, 'Not authorized, access denied'));
+      return next(new APIError(401, 'Not authorized, access denied'));
     }
   }
 
   if (!token) {
-    next(new APIError(401, 'Not authorized, no token provided'));
+    return next(new APIError(401, 'Not authorized, no token provided'));
   }
 };
 

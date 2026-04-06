@@ -1,8 +1,9 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 import uuid
 from io import BytesIO
+import json
 from models.meta import load_meta, save_meta
-from services.text_processing import extract_text_from_pdf_bytes, preprocess_text
+from services.text_processing import extract_text_from_pdf_bytes, preprocess_text, extract_skills
 from services.embedding import encode_text
 from config import RESUMES_DIR, RESUME_META
 import os
@@ -10,7 +11,7 @@ import os
 router = APIRouter()
 
 @router.post("/upload/resume")
-async def upload_resume(user_id: str = Form(...), username: str = Form(...), resume: UploadFile = File(...)):
+async def upload_resume(user_id: str = Form(...), username: str = Form(...), skills: str = Form("[]"), resume: UploadFile = File(...)):
     if resume.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF resumes allowed.")
 
@@ -33,6 +34,8 @@ async def upload_resume(user_id: str = Form(...), username: str = Form(...), res
     text = extract_text_from_pdf_bytes(BytesIO(content))
     processed = preprocess_text(text)
     embedding = encode_text(processed)
+    declared_skills = json.loads(skills or "[]")
+    extracted_skills = extract_skills(text, declared_skills)
 
     meta[resume_id] = {
         "id": resume_id,
@@ -40,7 +43,8 @@ async def upload_resume(user_id: str = Form(...), username: str = Form(...), res
         "username": username,
         "filename": filename,
         "text": processed,
-        "embedding": embedding
+        "embedding": embedding,
+        "skills": extracted_skills
     }
     save_meta(RESUME_META, meta)
     return {"resume_id": resume_id}

@@ -10,6 +10,10 @@ const studentSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
+  password: {
+    type: String,
+    required: true,
+  },
   current_status: {
     type: String,
     enum: ["active", "notactive"],
@@ -26,6 +30,10 @@ const studentSchema = new mongoose.Schema({
     type: [String],
     default: [],
   },
-});
+  portfolio_url: {
+    type: String,
+    default: "",
+  },
+}, { timestamps: true });
 
 export default mongoose.model("Student", studentSchema);

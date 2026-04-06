@@ -1,7 +1,9 @@
 // src/services/studentService.js
 import Student from '../models/studentModel.js';
+import Job from '../models/jobModel.js';
 import BaseService from './baseService.js';
 import APIError from '../utilities/APIError.js';
+import Application from '../models/applicationModel.js';
 import "dotenv/config";
 
 const NEURON_SERVER_API = process.env.NEURON_SERVER_API;  
@@ -61,8 +63,38 @@ class StudentService extends BaseService {
     }
     try {
       const jobs = await response.json();
-      console.log('Neuron matched jobs ->', jobs);   
-      return jobs;                                   
+      const student = await this.Model.findOne({ resumeId }, '_id');
+      const applications = student
+        ? await Application.find({ student: student._id }).select('job status')
+        : [];
+
+      const applicationMap = new Map(
+        applications.map((application) => [application.job.toString(), application.status])
+      );
+
+      const learningPath = Array.from(
+        new Set(
+          (jobs.matches || [])
+            .slice(0, 5)
+            .flatMap((job) => job.missing_skills || [])
+        )
+      );
+
+      const matchedJobIds = (jobs.matches || []).map((job) => job.job_id);
+      const mongoJobs = await Job.find({ job_id: { $in: matchedJobIds } }).select('_id job_id');
+      const jobIdMap = new Map(
+        mongoJobs.map((job) => [job.job_id, job._id.toString()])
+      );
+
+      return {
+        ...jobs,
+        learning_path: learningPath,
+        matches: (jobs.matches || []).map((job) => ({
+          ...job,
+          mongo_job_id: jobIdMap.get(job.job_id) || null,
+          application_status: applicationMap.get(jobIdMap.get(job.job_id)) || null,
+        })),
+      };
     } catch (jsonErr) {
       throw new APIError(500, `Failed to parse Neuron response: ${jsonErr.message}`);
     }

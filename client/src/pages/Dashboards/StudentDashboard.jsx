@@ -4,7 +4,7 @@ import Logo from '../../assets/logo.png';
 import ProfileModal from '../../components/ProfileModal';
 import { NotificationProvider, useNotification } from '../../components/NotificationBar';
 import { User, FileUp, Briefcase, Building2, MapPin, Sparkles } from 'lucide-react';
-import { fetchJobsFromNeuron } from '../../api/student.api'
+import { fetchStudentMatches } from '../../api/student.api'
 
 const JobCardSkeleton = () => (
   <div className="animate-pulse p-4 border-l-4 border-transparent">
@@ -43,6 +43,7 @@ const StudentDashboardContent = () => {
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setModalOpen] = useState(false);
   const [jobCount, setJobCount] = useState(5);
+  const [learningPath, setLearningPath] = useState([]);
 
   const resumeId = user?.resumeId;
   const hasResume = !!resumeId;
@@ -53,22 +54,24 @@ const StudentDashboardContent = () => {
     const loadJobs = async () => {
       setLoading(true);
       try {
-        const data = await fetchJobsFromNeuron(resumeId, jobCount);
+        const data = await fetchStudentMatches(user?._id, jobCount);
         const matches = Array.isArray(data.matches) ? data.matches : [];
         setJobs(matches);
         setSelectedJob(matches[0] ?? null);
+        setLearningPath(Array.isArray(data.learning_path) ? data.learning_path : []);
       } catch (err) {
         console.error(err);
         notify(err.message || 'Failed to fetch job recommendations', 'error');
         setJobs([]);
         setSelectedJob(null);
+        setLearningPath([]);
       } finally {
         setLoading(false);
       }
     };
 
     loadJobs();
-  }, [hasResume, resumeId, jobCount, notify]);
+  }, [hasResume, resumeId, jobCount, notify, user?._id]);
 
   return (
     <div className="min-h-screen bg-sky-50">
@@ -200,13 +203,51 @@ const StudentDashboardContent = () => {
                     </div>
                   </div>
 
-                  {selectedJob.skills_required && (
-                    <div className="flex flex-wrap gap-2">
-                      {selectedJob.skills_required.split(',').map((skill, idx) => (
-                        <span key={idx} className="bg-sky-100 text-sky-800 text-xs px-2 py-1 rounded-full">
-                          {skill.trim()}
-                        </span>
-                      ))}
+                  {selectedJob.matched_skills?.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold text-emerald-700 mb-2">Matched Skills</p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedJob.matched_skills.map((skill, idx) => (
+                          <span key={idx} className="bg-emerald-100 text-emerald-800 text-xs px-2 py-1 rounded-full">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedJob.missing_skills?.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold text-amber-700 mb-2">Recommended Skills</p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedJob.missing_skills.map((skill, idx) => (
+                          <span key={idx} className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {learningPath.length > 0 && (
+                    <div className="bg-sky-50 rounded-2xl p-4 border border-sky-100">
+                      <p className="text-sm font-semibold text-sky-800 mb-2">Learning Path</p>
+                      <div className="flex flex-wrap gap-2">
+                        {learningPath.map((skill, idx) => (
+                          <span key={idx} className="bg-white text-sky-700 text-xs px-2 py-1 rounded-full border border-sky-200">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedJob.application_status && (
+                    <div className="bg-violet-50 p-4 rounded-xl">
+                      <p className="text-xs font-semibold text-violet-700 uppercase tracking-wider">
+                        Application Status
+                      </p>
+                      <p className="mt-1 text-sm text-gray-800">{selectedJob.application_status}</p>
                     </div>
                   )}
 
@@ -215,20 +256,20 @@ const StudentDashboardContent = () => {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t">
-                    {selectedJob.experience && (
+                    {selectedJob.experience_level && (
                       <div className="bg-blue-50 p-4 rounded-xl">
                         <p className="text-xs font-semibold text-blue-700 uppercase tracking-wider">
                           Experience
                         </p>
-                        <p className="mt-1 text-sm text-gray-800">{selectedJob.experience}</p>
+                        <p className="mt-1 text-sm text-gray-800">{selectedJob.experience_level}</p>
                       </div>
                     )}
-                    {selectedJob.salary && (
+                    {selectedJob.salary_range && (
                       <div className="bg-emerald-50 p-4 rounded-xl">
                         <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">
                           Salary
                         </p>
-                        <p className="mt-1 text-sm text-gray-800 font-medium">{selectedJob.salary}</p>
+                        <p className="mt-1 text-sm text-gray-800 font-medium">{selectedJob.salary_range}</p>
                       </div>
                     )}
                   </div>

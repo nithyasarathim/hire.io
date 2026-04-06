@@ -2,6 +2,8 @@ import Job from '../models/jobModel.js';
 import BaseService from './baseService.js';
 import APIError from '../utilities/APIError.js';
 import mongoose from 'mongoose';
+import axios from 'axios';
+import FormData from 'form-data';
 import "dotenv/config";
 
 const NEURON_SERVER_API = process.env.NEURON_SERVER_API;
@@ -28,19 +30,16 @@ class JobService extends BaseService {
       formData.append('company', company.company_name);
       formData.append('job_title', jobData.job_name);
       formData.append('description', jobData.job_description);
+      formData.append('location', jobData.location);
+      formData.append('job_type', jobData.job_type);
+      formData.append('salary_range', jobData.salary_range || '');
+      formData.append('experience_level', jobData.experience_level || '');
 
       try {
-          const response = await fetch(externalJobApiUrl, {
-              method: 'POST',
-              body: formData,
+          const response = await axios.post(externalJobApiUrl, formData, {
+              headers: formData.getHeaders(),
           });
-
-          if (!response.ok) {
-              const errorBody = await response.json();
-              throw new APIError(response.status, errorBody.message || 'Neuron API failed to upload job');
-          }
-
-          const result = await response.json();
+          const result = response.data;
           const mockJobId = result.job_id;
           
           const newJobData = {
@@ -62,7 +61,7 @@ class JobService extends BaseService {
   }
   
   async matchCandidates(jobId, count = 5) {
-      const job = await this.Model.findById(jobId, 'job_id candidate');
+      const job = await this.Model.findById(jobId, 'job_id candidate opening_status');
       if (!job) {
           throw new APIError(404, 'Job not found.');
       }
@@ -83,34 +82,33 @@ class JobService extends BaseService {
       const externalMatchApiUrl = `${NEURON_SERVER_API}/match/candidates?${params.toString()}`;
 
       try {
-          const response = await fetch(externalMatchApiUrl);
-
-          if (!response.ok) {
-              const errorBody = await response.json();
-              throw new APIError(response.status, errorBody.message || 'Neuron API failed to match candidates');
-          }
-          
-          const externalMatchedCandidates = await response.json();
+          const response = await axios.get(externalMatchApiUrl);
+          const externalMatchedCandidates = response.data;
           
           const StudentModel = mongoose.model('Student');
           
           const matchedCandidates = [];
-          for (const externalCandidate of externalMatchedCandidates) {
+          for (const externalCandidate of externalMatchedCandidates.candidates || []) {
               const student = await StudentModel.findById(externalCandidate.user_id);
               if (student) {
                   const finalCandidate = {
                       ...externalCandidate,
                       student_id: student._id.toString(),
-                      student_email: student.email
+                      student_email: student.email,
+                      portfolio_url: student.portfolio_url || ''
                   };
                   matchedCandidates.push(finalCandidate);
               }
           }
-          
-          return matchedCandidates;
+
+          return {
+              ...externalMatchedCandidates,
+              candidates: matchedCandidates
+          };
       } catch (error) {
           if (error instanceof APIError) throw error;
-          throw new APIError(500, `Failed to communicate with Neuron Server: ${error.message}`);
+          const message = error.response?.data?.detail || error.message;
+          throw new APIError(error.response?.status || 500, `Failed to communicate with Neuron Server: ${message}`);
       }
   }
 }

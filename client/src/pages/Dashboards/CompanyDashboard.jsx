@@ -7,7 +7,7 @@ import {
   useNotification,
 } from "../../components/NotificationBar";
 import { FileText, CheckCircle, ExternalLink, Sparkles, X } from "lucide-react";
-import { createJob, fetchCandidatesFromNeuron } from "../../api/company.api";
+import { createJob, fetchCandidatesFromNeuron, fetchApplicantAnalytics } from "../../api/company.api";
 
 const CreateJobModal = ({ isOpen, onClose, onJobCreated, companyId }) => {
   const notify = useNotification();
@@ -15,6 +15,10 @@ const CreateJobModal = ({ isOpen, onClose, onJobCreated, companyId }) => {
   const [formData, setFormData] = useState({
     job_name: "",
     job_description: "",
+    location: "",
+    job_type: "Full-time",
+    salary_range: "",
+    experience_level: "",
   });
 
   if (!isOpen) return null;
@@ -31,7 +35,7 @@ const CreateJobModal = ({ isOpen, onClose, onJobCreated, companyId }) => {
       notify("Job posted successfully", "success");
       onJobCreated();
       onClose();
-      setFormData({ job_name: "", job_description: "" });
+      setFormData({ job_name: "", job_description: "", location: "", job_type: "Full-time", salary_range: "", experience_level: "" });
     } catch (err) {
       notify(err.message || "Failed to create job", "error");
     } finally {
@@ -71,6 +75,43 @@ const CreateJobModal = ({ isOpen, onClose, onJobCreated, companyId }) => {
               setFormData({ ...formData, job_description: e.target.value })
             }
           />
+          <input
+            required
+            className="w-full border rounded-lg px-3 py-2 outline-none focus:border-[#00aaff] text-md"
+            placeholder="Location"
+            value={formData.location}
+            onChange={(e) =>
+              setFormData({ ...formData, location: e.target.value })
+            }
+          />
+          <select
+            required
+            className="w-full border rounded-lg px-3 py-2 outline-none focus:border-[#00aaff] text-md"
+            value={formData.job_type}
+            onChange={(e) =>
+              setFormData({ ...formData, job_type: e.target.value })
+            }
+          >
+            <option value="Internship">Internship</option>
+            <option value="Full-time">Full-time</option>
+            <option value="Part-time">Part-time</option>
+          </select>
+          <input
+            className="w-full border rounded-lg px-3 py-2 outline-none focus:border-[#00aaff] text-md"
+            placeholder="Salary Range"
+            value={formData.salary_range}
+            onChange={(e) =>
+              setFormData({ ...formData, salary_range: e.target.value })
+            }
+          />
+          <input
+            className="w-full border rounded-lg px-3 py-2 outline-none focus:border-[#00aaff] text-md"
+            placeholder="Experience Level"
+            value={formData.experience_level}
+            onChange={(e) =>
+              setFormData({ ...formData, experience_level: e.target.value })
+            }
+          />
           <button
             type="submit"
             disabled={loading}
@@ -93,6 +134,7 @@ const CompanyDashboardContent = () => {
   const [activeTab, setActiveTab] = useState("matches");
   const [candidateCount, setCandidateCount] = useState(5);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [analytics, setAnalytics] = useState({ average_match_score: 0, total_applications: 0 });
 
   const fetchJobs = async () => {
     try {
@@ -104,6 +146,15 @@ const CompanyDashboardContent = () => {
       if (myJobs.length > 0 && !selectedJob) setSelectedJob(myJobs[0]);
     } catch (err) {
       notify("Failed to load jobs", "error");
+    }
+  };
+
+  const fetchAnalytics = async () => {
+    try {
+      const response = await fetchApplicantAnalytics(user?._id);
+      setAnalytics(response.analytics || { average_match_score: 0, total_applications: 0 });
+    } catch {
+      setAnalytics({ average_match_score: 0, total_applications: 0 });
     }
   };
 
@@ -121,6 +172,9 @@ const CompanyDashboardContent = () => {
 
   useEffect(() => {
     if (user?._id) fetchJobs();
+  }, [user]);
+  useEffect(() => {
+    if (user?._id) fetchAnalytics();
   }, [user]);
   useEffect(() => {
     if (selectedJob?._id) fetchMatches(selectedJob._id);
@@ -147,6 +201,16 @@ const CompanyDashboardContent = () => {
         <h1 className="text-2xl font-extrabold text-[#2d405e] mb-6">
           Welcome, {user?.company_name}
         </h1>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <div className="bg-white rounded-2xl border shadow-sm p-5">
+            <p className="text-xs font-black uppercase tracking-wider text-gray-400">Average Match Score</p>
+            <p className="text-3xl font-black text-[#00aaff] mt-2">{Math.round(analytics.average_match_score || 0)}%</p>
+          </div>
+          <div className="bg-white rounded-2xl border shadow-sm p-5">
+            <p className="text-xs font-black uppercase tracking-wider text-gray-400">Applications Tracked</p>
+            <p className="text-3xl font-black text-[#2d405e] mt-2">{analytics.total_applications || 0}</p>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-4 space-y-4">
@@ -272,6 +336,30 @@ const CompanyDashboardContent = () => {
                             <ExternalLink size={12} />
                           </button>
                         </div>
+                        {can.matched_skills?.length > 0 && (
+                          <div className="mt-4">
+                            <p className="text-xs font-black text-emerald-600 uppercase mb-2">Matched Skills</p>
+                            <div className="flex flex-wrap gap-2">
+                              {can.matched_skills.map((skill, skillIdx) => (
+                                <span key={skillIdx} className="bg-emerald-50 text-emerald-700 text-[10px] font-black px-2 py-1 rounded-full">
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {can.missing_skills?.length > 0 && (
+                          <div className="mt-4">
+                            <p className="text-xs font-black text-amber-600 uppercase mb-2">Skill Gaps</p>
+                            <div className="flex flex-wrap gap-2">
+                              {can.missing_skills.map((skill, skillIdx) => (
+                                <span key={skillIdx} className="bg-amber-50 text-amber-700 text-[10px] font-black px-2 py-1 rounded-full">
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                     {candidates.length === 0 && (

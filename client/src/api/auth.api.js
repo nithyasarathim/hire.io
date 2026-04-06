@@ -37,10 +37,6 @@ export const loginUser = (credentials) => {
   return axiosInstance.post('/api/auth/login', credentials);
 };
 
-export const ssoStudentLogin = (ssoData) => {
-  return axiosInstance.post('/api/auth/sso/student', ssoData);
-};
-
 export const fetchProfile = () => {
   return axiosInstance.get('/api/auth/profile');
 };

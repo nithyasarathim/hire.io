@@ -11,66 +11,12 @@ const roleToModel = {
   admin: Admin,
 };
 
-const ssoStudent = async (req, res, next) => {
-  try {
-    const { name, email } = req.body;
-
-    if (!name || !email) {
-      return next(new APIError(400, 'Both name and email are required for SSO.'));
-    }
-    if (typeof name !== 'string' || typeof email !== 'string') {
-      return next(new APIError(400, 'Name and email must be strings.'));
-    }
-
-    const trimmedName = name.trim();
-    const trimmedEmail = email.trim().toLowerCase();
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      return next(new APIError(400, 'Invalid email format.'));
-    }    
-
-    let user = await Student.findOne({ email: trimmedEmail });
-
-    if (!user) {
-      user = new Student({
-        student_name: trimmedName,
-        email: trimmedEmail,
-        skills: [],
-        student_description: '',
-      });
-      await user.save();
-    }
-
-    const token = jwt.sign(
-      { id: user._id, role: 'student' },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    res.status(200).json({
-      success: true,
-      token,
-      user: {
-        _id: user._id,
-        student_name: user.student_name,
-        email: user.email,
-        role: 'student',
-        student_description: user.student_description || '',
-        skills: user.skills || [],
-        resumeId: user.resumeId || null,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
 const register = async (req, res, next) => {
   try {
     const { role, ...userData } = req.body;
 
-    if (!role || !['company', 'admin'].includes(role.toLowerCase())) {
-      return next(new APIError(400, 'Role is required and must be company or admin'));
+    if (!role || !['student', 'company', 'admin'].includes(role.toLowerCase())) {
+      return next(new APIError(400, 'Role is required and must be student, company, or admin'));
     }
 
     const result = await authService.registerUser(role.toLowerCase(), userData);
@@ -88,11 +34,7 @@ const login = async (req, res, next) => {
       return next(new APIError(400, 'Email, password, and role are required'));
     }
 
-    if (role.toLowerCase() === 'student') {
-      return next(new APIError(400, 'Students must log in via SSO'));
-    }
-
-    if (!['company', 'admin'].includes(role.toLowerCase())) {
+    if (!['student', 'company', 'admin'].includes(role.toLowerCase())) {
       return next(new APIError(400, 'Invalid role'));
     }
 
@@ -125,17 +67,19 @@ const profile = async (req, res, next) => {
     if (!Model) return next(new APIError(401, 'Invalid role'));
     const user = await Model.findById(id).select('-password');
     if (!user) return next(new APIError(401, 'User not found'));
-    const base = { id: user._id, email: user.email || '' };
+    const base = { _id: user._id, id: user._id, email: user.email || '' };
     if (roleKey === 'student') {
       Object.assign(base, {
         name: user.student_name || '',
         student_description: user.student_description || '',
         skills: user.skills || [],
         resumeId: user.resumeId || null,
+        portfolio_url: user.portfolio_url || '',
       });
     } else if (roleKey === 'company') {
       Object.assign(base, {
         name: user.company_name || '',
+        company_name: user.company_name || '',
         company_description: user.company_description || '',
         company_website: user.company_website || '',
         location: user.location || '',
@@ -160,5 +104,4 @@ export default {
   register,
   login,
   profile,
-  ssoStudent,
 };
