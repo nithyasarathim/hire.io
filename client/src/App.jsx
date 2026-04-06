@@ -3,8 +3,7 @@ import AuthProvider from './auth/AuthProvider';
 import PrivateRoute from './auth/PrivateRoute';
 import { Toaster } from "react-hot-toast";
 import { Routes, Route } from 'react-router-dom';
-
-import Login from './pages/Auth/Login';
+import Login from "./pages/Auth/Login"
 import SignIn from './pages/Auth/SignIn';
 import StudentDashboard from './pages/Dashboards/StudentDashboard';
 import CompanyDashboard from './pages/Dashboards/CompanyDashboard';

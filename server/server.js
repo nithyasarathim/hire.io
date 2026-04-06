@@ -1,4 +1,5 @@
 
+import 'dotenv/config';
 
 import cors from 'cors';
 import express from "express";
@@ -10,7 +11,6 @@ import jobRoutes from "./routers/jobRoutes.js";
 import companyRoutes from "./routers/companyRoutes.js";
 import studentRoutes from "./routers/studentRoutes.js";
 import adminRoutes from "./routers/adminRoutes.js";
-import 'dotenv/config';
 
 const app = express();
 

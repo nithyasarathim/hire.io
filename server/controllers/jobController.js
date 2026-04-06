@@ -42,22 +42,33 @@ const getJobs = async (req, res, next) => {
     }
 };
 
+import axios from 'axios';
+
 const matchCandidates = async (req, res, next) => {
     try {
         const jobId = req.params.id;
-        
+        const count = req.query.count || 5;
+
         const job = await jobService.findById(jobId);
         if (!job) {
             return next(new APIError(404, 'Job not found'));
         }
+
         if (req.role !== 'admin' && job.company.toString() !== req.user._id.toString()) {
             return next(new APIError(403, 'Not authorized to match candidates for this job'));
         }
+        const neuronResponse = await axios.get(`http://localhost:8001/match/candidates`, {
+            params: {
+                jobid: job.job_id,
+                count: count
+            }
+        });
+        res.status(200).json(neuronResponse.data);
 
-        const matchedCandidates = await jobService.matchCandidates(jobId);
-
-        res.status(200).json(matchedCandidates);
     } catch (error) {
+        if (error.response) {
+            return next(new APIError(error.response.status, error.response.data.detail || 'Neuron API Error'));
+        }
         next(error);
     }
 };

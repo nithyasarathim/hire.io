@@ -15,7 +15,6 @@ async def upload_resume(user_id: str = Form(...), username: str = Form(...), res
         raise HTTPException(status_code=400, detail="Only PDF resumes allowed.")
 
     meta = load_meta(RESUME_META)
-    # remove old resume if exists
     existing_id = next((rid for rid, entry in meta.items() if entry["username"].lower() == username.lower()), None)
     if existing_id:
         old_path = os.path.join(RESUMES_DIR, meta[existing_id]["filename"])
