@@ -29,7 +29,7 @@ class StudentService extends BaseService {
       throw new APIError(500, `Database update failed: ${error.message}`);
     }
   }
-  async matchJobs(resumeId, count = 5) {
+  async matchJobs(resumeId, count = 5, filters = {}) {
     if (!resumeId) {
       throw new APIError(400, 'resumeId is required for job matching.');
     }
@@ -86,10 +86,30 @@ class StudentService extends BaseService {
         mongoJobs.map((job) => [job.job_id, job._id.toString()])
       );
 
+      const filteredMatches = (jobs.matches || []).filter((job) => {
+        const minSalary = filters.minSalary ? Number(filters.minSalary) : null;
+        const maxSalary = filters.maxSalary ? Number(filters.maxSalary) : null;
+        const currency = filters.currency || null;
+
+        if (currency && job.salary_currency !== currency) {
+          return false;
+        }
+
+        if (minSalary !== null && Number(job.salary_end) < minSalary) {
+          return false;
+        }
+
+        if (maxSalary !== null && Number(job.salary_start) > maxSalary) {
+          return false;
+        }
+
+        return true;
+      });
+
       return {
         ...jobs,
         learning_path: learningPath,
-        matches: (jobs.matches || []).map((job) => ({
+        matches: filteredMatches.map((job) => ({
           ...job,
           mongo_job_id: jobIdMap.get(job.job_id) || null,
           application_status: applicationMap.get(jobIdMap.get(job.job_id)) || null,

@@ -39,6 +39,7 @@ class ApplicationService extends BaseService {
       student: studentId,
       job: job._id,
       company: job.company,
+      engagement_type: 'Student Interest',
       match_score: candidateMatch?.accuracy || 0,
       matched_skills: candidateMatch?.matched_skills || [],
       missing_skills: candidateMatch?.missing_skills || [],
@@ -62,11 +63,54 @@ class ApplicationService extends BaseService {
   }
 
   async getStudentApplications(studentId) {
-    return this.Model.find({ student: studentId }).populate('job company', 'job_name company_name');
+    return this.Model.find({ student: studentId }).populate('job company', 'job_name company_name opening_status salary_currency salary_start salary_end');
   }
 
   async getCompanyApplications(companyId) {
     return this.Model.find({ company: companyId }).populate('job student', 'job_name student_name email');
+  }
+
+  async recordProfileView(jobId, studentId, companyId) {
+    const job = await mongoose.model('Job').findById(jobId);
+    if (!job) {
+      throw new APIError(404, 'Job not found');
+    }
+
+    if (job.company.toString() !== companyId.toString()) {
+      throw new APIError(403, 'Not authorized to view this candidate');
+    }
+
+    const matches = await jobService.matchCandidates(jobId, 100);
+    const candidateMatch = (matches.candidates || []).find(
+      (candidate) => candidate.student_id === studentId.toString()
+    );
+
+    return this.Model.findOneAndUpdate(
+      { student: studentId, job: jobId, company: companyId },
+      {
+        $set: {
+          company: companyId,
+          company_viewed_profile_at: new Date(),
+          engagement_type: 'Company Outreach',
+          match_score: candidateMatch?.accuracy || 0,
+          matched_skills: candidateMatch?.matched_skills || [],
+          missing_skills: candidateMatch?.missing_skills || [],
+        },
+        $setOnInsert: {
+          student: studentId,
+          job: jobId,
+          status: 'Applied',
+        },
+      },
+      { new: true, upsert: true }
+    );
+  }
+
+  async recordContact(jobId, studentId, companyId) {
+    const application = await this.recordProfileView(jobId, studentId, companyId);
+    application.company_contacted_at = new Date();
+    await application.save();
+    return application;
   }
 
   async getCompanyAverageMatchScore(companyId) {

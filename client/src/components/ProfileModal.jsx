@@ -14,6 +14,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
     name: user?.name || '',
     student_description: user?.student_description || '',
     skills: user?.skills?.join(', ') || '',
+    portfolio_url: user?.portfolio_url || '',
   });
   const resumeRef = useRef();
 
@@ -29,6 +30,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
         name: data.name,
         student_description: data.student_description,
         skills,
+        portfolio_url: data.portfolio_url,
       });
       updateProfile(res.data);
       toast.success('Profile updated successfully', {
@@ -131,6 +133,11 @@ const ProfileModal = ({ isOpen, onClose }) => {
                     {user.student_description || 'No description yet'}
                   </p>
 
+                  <p className="text-gray-800 font-semibold mt-2">Portfolio:</p>
+                  <p className="text-sky-700 break-all">
+                    {user.portfolio_url || 'No portfolio added'}
+                  </p>
+
                   {user.skills?.length > 0 && (
                     <>
                       <p className="text-gray-800 font-semibold mt-2">Skills:</p>
@@ -171,6 +178,13 @@ const ProfileModal = ({ isOpen, onClose }) => {
                       value={data.skills}
                       onChange={handleChange}
                       placeholder={user.skills?.join(', ') || 'Skills (comma separated)'}
+                      className="w-full border border-sky-300 bg-sky-50 focus:bg-white rounded-lg p-3 outline-none focus:ring-2 focus:ring-sky-400"
+                    />
+                    <input
+                      name="portfolio_url"
+                      value={data.portfolio_url}
+                      onChange={handleChange}
+                      placeholder={user.portfolio_url || 'Portfolio URL'}
                       className="w-full border border-sky-300 bg-sky-50 focus:bg-white rounded-lg p-3 outline-none focus:ring-2 focus:ring-sky-400"
                     />
                     <button

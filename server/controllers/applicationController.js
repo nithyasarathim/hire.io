@@ -27,7 +27,35 @@ const getCompanyApplications = async (req, res, next) => {
   }
 };
 
+const markProfileViewed = async (req, res, next) => {
+  try {
+    const application = await applicationService.recordProfileView(
+      req.params.jobId,
+      req.params.studentId,
+      req.user._id
+    );
+    res.status(200).json({ success: true, application });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const markContacted = async (req, res, next) => {
+  try {
+    const application = await applicationService.recordContact(
+      req.params.jobId,
+      req.params.studentId,
+      req.user._id
+    );
+    res.status(200).json({ success: true, application });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   getMyApplications,
   getCompanyApplications,
+  markProfileViewed,
+  markContacted,
 };

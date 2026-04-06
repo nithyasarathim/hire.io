@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import studentController from '../controllers/studentController.js';
-import { authenticate, authorize } from '../middlewares/auth.js';
+import { authenticate, authorize, isStudentOrAdmin } from '../middlewares/auth.js';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -18,12 +18,12 @@ router.route('/:id')
 router.route('/:id/resume')
   .put(
     authenticate,
-    authorize(['student', 'admin']),
+    isStudentOrAdmin,
     upload.single('resume'),   
     studentController.uploadResume
   );
 
 router.route('/:id/match/jobs')
-  .get(authenticate, authorize(['student', 'admin']), studentController.matchJobs);
+  .get(authenticate, isStudentOrAdmin, studentController.matchJobs);
 
 export default router;

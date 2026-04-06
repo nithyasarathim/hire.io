@@ -17,6 +17,7 @@ const jobSchema = new mongoose.Schema({
   },
   job_description: {
     type: String,
+    required: true,
   },
   location: {
     type: String,
@@ -24,16 +25,32 @@ const jobSchema = new mongoose.Schema({
   },
   job_type: {
     type: String,
-    enum: ["Internship", "Full-time", "Part-time"],
+    enum: ["Internship", "Full-time", "Contract"],
     required: true,
   },
-  salary_range: {
+  salary_start: {
+    type: Number,
+    required: true,
+    min: 0,
+  },
+  salary_end: {
+    type: Number,
+    required: true,
+    min: 0,
+  },
+  salary_currency: {
     type: String,
-    default: "",
+    enum: ["INR", "USD"],
+    required: true,
   },
   experience_level: {
     type: String,
-    default: "",
+    required: true,
+  },
+  skills_required: {
+    type: [String],
+    required: true,
+    default: [],
   },
   opening_status: {
     type: String,

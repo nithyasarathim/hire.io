@@ -59,3 +59,9 @@ export const authorize = (roles = []) => {
         next();
     };
 };
+
+export const isStudent = authorize(['student']);
+export const isCompany = authorize(['company']);
+export const isAdmin = authorize(['admin']);
+export const isCompanyOrAdmin = authorize(['company', 'admin']);
+export const isStudentOrAdmin = authorize(['student', 'admin']);

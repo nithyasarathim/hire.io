@@ -1,19 +1,19 @@
 import express from 'express';
 import jobController from '../controllers/jobController.js';
-import { authenticate, authorize } from '../middlewares/auth.js';
+import { authenticate, isCompany, isCompanyOrAdmin } from '../middlewares/auth.js';
 
 const router = express.Router();
 
 router.route('/')
   .get(jobController.getJobs)
-  .post(authenticate, authorize(['company']), jobController.createJob);
+  .post(authenticate, isCompany, jobController.createJob);
 
 router.route('/:id')
   .get(jobController.getJobById)
-  .put(authenticate, authorize(['company', 'admin']), jobController.updateJob)
-  .delete(authenticate, authorize(['company', 'admin']), jobController.deleteJob);
+  .put(authenticate, isCompanyOrAdmin, jobController.updateJob)
+  .delete(authenticate, isCompanyOrAdmin, jobController.deleteJob);
   
 router.route('/:id/match/candidates')
-  .get(authenticate, authorize(['company', 'admin']), jobController.matchCandidates);
+  .get(authenticate, isCompanyOrAdmin, jobController.matchCandidates);
 
 export default router;

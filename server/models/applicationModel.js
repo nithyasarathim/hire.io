@@ -21,6 +21,11 @@ const applicationSchema = new mongoose.Schema({
     enum: ["Applied", "Interviewing", "Offered", "Rejected"],
     default: "Applied",
   },
+  engagement_type: {
+    type: String,
+    enum: ["Student Interest", "Company Outreach"],
+    default: "Student Interest",
+  },
   match_score: {
     type: Number,
     default: 0,
@@ -32,6 +37,14 @@ const applicationSchema = new mongoose.Schema({
   missing_skills: {
     type: [String],
     default: [],
+  },
+  company_viewed_profile_at: {
+    type: Date,
+    default: null,
+  },
+  company_contacted_at: {
+    type: Date,
+    default: null,
   },
 }, { timestamps: true });
 

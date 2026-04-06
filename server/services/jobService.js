@@ -32,8 +32,11 @@ class JobService extends BaseService {
       formData.append('description', jobData.job_description);
       formData.append('location', jobData.location);
       formData.append('job_type', jobData.job_type);
-      formData.append('salary_range', jobData.salary_range || '');
-      formData.append('experience_level', jobData.experience_level || '');
+      formData.append('salary_start', String(jobData.salary_start));
+      formData.append('salary_end', String(jobData.salary_end));
+      formData.append('salary_currency', jobData.salary_currency);
+      formData.append('experience_level', jobData.experience_level);
+      formData.append('skills_required', JSON.stringify(jobData.skills_required || []));
 
       try {
           const response = await axios.post(externalJobApiUrl, formData, {
@@ -42,8 +45,9 @@ class JobService extends BaseService {
           const result = response.data;
           const mockJobId = result.job_id;
           
-          const newJobData = {
+      const newJobData = {
               ...jobData,
+              skills_required: jobData.skills_required || [],
               job_id: mockJobId,
               company: companyId 
           };
@@ -61,7 +65,7 @@ class JobService extends BaseService {
   }
   
   async matchCandidates(jobId, count = 5) {
-      const job = await this.Model.findById(jobId, 'job_id candidate opening_status');
+      const job = await this.Model.findById(jobId, 'job_id candidate opening_status company');
       if (!job) {
           throw new APIError(404, 'Job not found.');
       }
@@ -86,16 +90,27 @@ class JobService extends BaseService {
           const externalMatchedCandidates = response.data;
           
           const StudentModel = mongoose.model('Student');
+          const ApplicationModel = mongoose.model('Application');
           
           const matchedCandidates = [];
           for (const externalCandidate of externalMatchedCandidates.candidates || []) {
               const student = await StudentModel.findById(externalCandidate.user_id);
               if (student) {
+                  const application = await ApplicationModel.findOne({
+                      company: job.company,
+                      job: job._id,
+                      student: student._id
+                  }).select('status company_viewed_profile_at company_contacted_at engagement_type');
                   const finalCandidate = {
                       ...externalCandidate,
                       student_id: student._id.toString(),
                       student_email: student.email,
-                      portfolio_url: student.portfolio_url || ''
+                      portfolio_url: student.portfolio_url || '',
+                      skills: student.skills || [],
+                      application_status: application?.status || null,
+                      company_viewed_profile_at: application?.company_viewed_profile_at || null,
+                      company_contacted_at: application?.company_contacted_at || null,
+                      engagement_type: application?.engagement_type || null
                   };
                   matchedCandidates.push(finalCandidate);
               }

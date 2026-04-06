@@ -64,7 +64,7 @@ const matchJobs = async (req, res, next) => {
     const student = await studentService.findById(studentId);
     if (!student) return next(new APIError(404, 'Student not found'));
     if (!student.resumeId) return next(new APIError(400, 'Please upload your resume first.'));
-    const matchedJobs = await studentService.matchJobs(student.resumeId, count);
+    const matchedJobs = await studentService.matchJobs(student.resumeId, count, req.query);
 
     res.status(200).json({
       success: true,

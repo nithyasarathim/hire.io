@@ -1,13 +1,15 @@
 import express from 'express';
 import applicationController from '../controllers/applicationController.js';
 import jobController from '../controllers/jobController.js';
-import { authenticate, authorize } from '../middlewares/auth.js';
+import { authenticate, isCompanyOrAdmin, isStudent } from '../middlewares/auth.js';
 
 const router = express.Router();
 
-router.get('/me', authenticate, authorize(['student']), applicationController.getMyApplications);
-router.get('/company/:companyId', authenticate, authorize(['company', 'admin']), applicationController.getCompanyApplications);
-router.post('/jobs/:id/apply', authenticate, authorize(['student']), jobController.applyToJob);
-router.patch('/:applicationId/status', authenticate, authorize(['company', 'admin']), jobController.updateApplicationStatus);
+router.get('/me', authenticate, isStudent, applicationController.getMyApplications);
+router.get('/company/:companyId', authenticate, isCompanyOrAdmin, applicationController.getCompanyApplications);
+router.post('/jobs/:id/apply', authenticate, isStudent, jobController.applyToJob);
+router.patch('/:applicationId/status', authenticate, isCompanyOrAdmin, jobController.updateApplicationStatus);
+router.post('/jobs/:jobId/students/:studentId/view', authenticate, isCompanyOrAdmin, applicationController.markProfileViewed);
+router.post('/jobs/:jobId/students/:studentId/contact', authenticate, isCompanyOrAdmin, applicationController.markContacted);
 
 export default router;

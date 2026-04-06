@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Form, Query, HTTPException
 import uuid
 import os
+import json
 from models.meta import load_meta, save_meta
 from services.text_processing import preprocess_text, extract_skills
 from services.embedding import encode_text, compute_similarity, score_label
@@ -14,9 +15,12 @@ async def upload_job(
     job_title: str = Form(...),
     description: str = Form(...),
     location: str = Form(...),
-    salary_range: str = Form(""),
-    experience_level: str = Form(""),
+    salary_start: float = Form(...),
+    salary_end: float = Form(...),
+    salary_currency: str = Form(...),
+    experience_level: str = Form(...),
     job_type: str = Form(...),
+    skills_required: str = Form(...),
 ):
     meta = load_meta(JD_META)
     job_id = str(uuid.uuid4())[:8]
@@ -28,7 +32,8 @@ async def upload_job(
 
     processed = preprocess_text(description)
     embedding = encode_text(processed)
-    extracted_skills = extract_skills(description)
+    parsed_skills = json.loads(skills_required or "[]")
+    normalized_skills = extract_skills(description, parsed_skills)
 
     meta[job_id] = {
         "id": job_id,
@@ -36,23 +41,26 @@ async def upload_job(
         "job_title": job_title,
         "description": description,
         "location": location,
-        "salary_range": salary_range,
+        "salary_start": salary_start,
+        "salary_end": salary_end,
+        "salary_currency": salary_currency,
         "experience_level": experience_level,
         "job_type": job_type,
+        "skills_required": parsed_skills,
         "filename": filename,
         "text": processed,
         "embedding": embedding,
-        "skills": extracted_skills,
+        "skills": normalized_skills,
     }
 
     save_meta(JD_META, meta)
 
     return {"job_id": job_id, "message": "Job uploaded successfully."}
 
-def build_skill_gap(resume_skills, job_skills):
-    resume_set = set(resume_skills or [])
+def build_skill_gap(student_skills, job_skills):
+    student_set = set(student_skills or [])
     job_set = set(job_skills or [])
-    return sorted(resume_set & job_set), sorted(job_set - resume_set)
+    return sorted(student_set & job_set), sorted(job_set - student_set)
 
 @router.get("/match/candidates")
 async def match_candidates(jobid: str, count: int = Query(5, gt=0)):
@@ -68,12 +76,12 @@ async def match_candidates(jobid: str, count: int = Query(5, gt=0)):
     matches = compute_similarity(jd_emb, pool_embs, pool_ids)[:count]
 
     job_data = jd_meta[jobid]
-
     candidates = []
+
     for rid, score in matches:
         matched_skills, missing_skills = build_skill_gap(
             res_meta[rid].get("skills", []),
-            job_data.get("skills", [])
+            job_data.get("skills_required", [])
         )
         candidates.append({
             "user_id": res_meta[rid]["user_id"],
@@ -92,10 +100,12 @@ async def match_candidates(jobid: str, count: int = Query(5, gt=0)):
             "company": job_data["company"],
             "description": job_data["description"],
             "location": job_data.get("location"),
-            "salary_range": job_data.get("salary_range"),
+            "salary_start": job_data.get("salary_start"),
+            "salary_end": job_data.get("salary_end"),
+            "salary_currency": job_data.get("salary_currency"),
             "experience_level": job_data.get("experience_level"),
             "job_type": job_data.get("job_type"),
-            "skills": job_data.get("skills", []),
+            "skills_required": job_data.get("skills_required", []),
         },
         "candidates": candidates,
     }
@@ -113,13 +123,11 @@ async def match_jobs(resumeId: str, count: int = Query(5, gt=0)):
     pool_embs = [jd_meta[i]["embedding"] for i in pool_ids]
     matches = compute_similarity(res_emb, pool_embs, pool_ids)[:count]
 
-    resume_user = res_meta[resumeId]["username"]
-
     job_matches = []
     for jid, score in matches:
         matched_skills, missing_skills = build_skill_gap(
             res_meta[resumeId].get("skills", []),
-            jd_meta[jid].get("skills", [])
+            jd_meta[jid].get("skills_required", [])
         )
         job_matches.append({
             "job_id": jid,
@@ -127,9 +135,12 @@ async def match_jobs(resumeId: str, count: int = Query(5, gt=0)):
             "job_title": jd_meta[jid]["job_title"],
             "description": jd_meta[jid].get("description"),
             "location": jd_meta[jid].get("location"),
-            "salary_range": jd_meta[jid].get("salary_range"),
+            "salary_start": jd_meta[jid].get("salary_start"),
+            "salary_end": jd_meta[jid].get("salary_end"),
+            "salary_currency": jd_meta[jid].get("salary_currency"),
             "experience_level": jd_meta[jid].get("experience_level"),
             "job_type": jd_meta[jid].get("job_type"),
+            "skills_required": jd_meta[jid].get("skills_required", []),
             "accuracy": round(score * 100, 2),
             "match": score_label(round(score * 100, 2)),
             "matched_skills": matched_skills,
@@ -138,6 +149,6 @@ async def match_jobs(resumeId: str, count: int = Query(5, gt=0)):
 
     return {
         "resume_id": resumeId,
-        "username": resume_user,
+        "username": res_meta[resumeId]["username"],
         "matches": job_matches,
     }

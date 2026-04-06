@@ -3,6 +3,7 @@ import APIError from '../utilities/APIError.js';
 import Student from '../models/studentModel.js';
 import Company from '../models/companyModel.js';
 import Admin from '../models/adminModel.js';
+import Application from '../models/applicationModel.js';
 import authService from '../services/authService.js';
 
 const roleToModel = {
@@ -65,18 +66,31 @@ const profile = async (req, res, next) => {
     const roleKey = role.toLowerCase();
     const Model = roleToModel[roleKey];
     if (!Model) return next(new APIError(401, 'Invalid role'));
-    const user = await Model.findById(id).select('-password');
+    let userQuery = Model.findById(id).select('-password');
+    if (roleKey === 'company') {
+      userQuery = userQuery.populate('jobs');
+    }
+    const user = await userQuery;
     if (!user) return next(new APIError(401, 'User not found'));
     const base = { _id: user._id, id: user._id, email: user.email || '' };
     if (roleKey === 'student') {
+      const applications = await Application.find({ student: user._id })
+        .populate('job company', 'job_name company_name opening_status')
+        .sort({ createdAt: -1 });
+
       Object.assign(base, {
         name: user.student_name || '',
         student_description: user.student_description || '',
         skills: user.skills || [],
         resumeId: user.resumeId || null,
         portfolio_url: user.portfolio_url || '',
+        applications,
       });
     } else if (roleKey === 'company') {
+      const applications = await Application.find({ company: user._id })
+        .populate('job student', 'job_name student_name email skills')
+        .sort({ createdAt: -1 });
+
       Object.assign(base, {
         name: user.company_name || '',
         company_name: user.company_name || '',
@@ -84,6 +98,7 @@ const profile = async (req, res, next) => {
         company_website: user.company_website || '',
         location: user.location || '',
         jobs: user.jobs || [],
+        interested_candidates: applications,
       });
     } else if (roleKey === 'admin') {
       Object.assign(base, { name: 'Admin' });
